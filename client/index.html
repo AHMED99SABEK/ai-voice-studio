@@ -315,20 +315,32 @@
                 </div>
             </div>
 
-            <!-- Tab: Cartesia TTS -->
+            <!-- Tab: Cartesia / Speech TTS -->
             <div class="settings-tab-pane" id="tab-tts">
                 <div class="form-group">
-                    <label for="settings-cartesia-key">Cartesia API Key <span class="label-required">*</span></label>
-                    <div class="input-with-toggle">
-                        <input type="password" id="settings-cartesia-key" class="text-input" placeholder="Your Cartesia API Key">
-                        <button type="button" class="toggle-visibility-btn" data-target="settings-cartesia-key" title="Show/Hide Key">👁️</button>
+                    <label for="settings-tts-provider">TTS Voice Engine</label>
+                    <div class="select-wrapper">
+                        <select id="settings-tts-provider" class="custom-select">
+                            <option value="cartesia" selected>Cartesia (Ultra-Realistic AI Voice) — Fast & Expressive</option>
+                            <option value="browser">Browser Built-in Voice (100% Free, Unlimited, No Key Needed)</option>
+                        </select>
                     </div>
-                    <span class="field-hint">Required for ultra-low latency realistic voice synthesis. Get free credits at play.cartesia.ai.</span>
+                    <span class="field-hint">Switch to Browser Built-in Voice anytime Cartesia credits run out or if you want 100% free offline speech synthesis.</span>
                 </div>
-                <div class="form-group">
-                    <label for="settings-cartesia-voice">Cartesia Voice ID <span class="label-hint">(Optional)</span></label>
-                    <input type="text" id="settings-cartesia-voice" class="text-input" placeholder="79a125e8-cd45-4c13-8a67-188112f4dd22">
-                    <span class="field-hint">Defaults to standard pleasant AI voice if left blank.</span>
+                <div id="cartesia-config-group">
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="settings-cartesia-key">Cartesia API Key <span class="label-required">*</span></label>
+                        <div class="input-with-toggle">
+                            <input type="password" id="settings-cartesia-key" class="text-input" placeholder="Your Cartesia API Key">
+                            <button type="button" class="toggle-visibility-btn" data-target="settings-cartesia-key" title="Show/Hide Key">👁️</button>
+                        </div>
+                        <span class="field-hint">Required when using Cartesia voice engine. Get credits at play.cartesia.ai.</span>
+                    </div>
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="settings-cartesia-voice">Cartesia Voice ID <span class="label-hint">(Optional)</span></label>
+                        <input type="text" id="settings-cartesia-voice" class="text-input" placeholder="79a125e8-cd45-4c13-8a67-188112f4dd22">
+                        <span class="field-hint">Defaults to standard pleasant AI voice if left blank.</span>
+                    </div>
                 </div>
             </div>
 

@@ -22,7 +22,8 @@ const DEFAULT_SETTINGS = {
     deepgram_key: '',
     cartesia_key: '',
     cartesia_voice: '79a125e8-cd45-4c13-8a67-188112f4dd22',
-    speech_pause_tolerance: 1500
+    speech_pause_tolerance: 1500,
+    tts_provider: 'cartesia'
 };
 
 const LLM_PRESETS = {
@@ -149,16 +150,27 @@ const settingsDeepgramKey = document.getElementById('settings-deepgram-key');
 const settingsPauseTolerance = document.getElementById('settings-pause-tolerance');
 const settingsCartesiaKey = document.getElementById('settings-cartesia-key');
 const settingsCartesiaVoice = document.getElementById('settings-cartesia-voice');
+const settingsTtsProvider = document.getElementById('settings-tts-provider');
+const cartesiaConfigGroup = document.getElementById('cartesia-config-group');
 const resetSettingsBtn = document.getElementById('reset-settings-btn');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
+
+function updateTtsGroupVisibility() {
+    const isCartesia = (settingsTtsProvider?.value || 'cartesia') === 'cartesia';
+    if (cartesiaConfigGroup) {
+        cartesiaConfigGroup.style.display = isCartesia ? 'block' : 'none';
+    }
+}
 
 // --- Settings Modal Logic ---
 function updateSettingsPillStatus() {
     const s = getSettings();
-    const hasKeys = !!(s.deepgram_key && s.cartesia_key);
+    const needsCartesia = (s.tts_provider || 'cartesia') === 'cartesia';
+    const hasKeys = !!(s.deepgram_key && (!needsCartesia || s.cartesia_key));
     if (keysStatusText) {
         if (hasKeys) {
-            keysStatusText.textContent = `Keys: Ready (${(s.llm_model || s.llm_preset)})`;
+            const voiceLabel = needsCartesia ? 'Cartesia' : 'Free Voice';
+            keysStatusText.textContent = `Keys: Ready (${voiceLabel}, ${s.llm_model || s.llm_preset})`;
             openSettingsSetupBtn?.classList.add('configured');
         } else {
             keysStatusText.textContent = 'Keys: Configure API Keys';
@@ -175,8 +187,10 @@ function openSettingsModal() {
     settingsLlmKey.value = s.llm_key || '';
     settingsDeepgramKey.value = s.deepgram_key || '';
     if (settingsPauseTolerance) settingsPauseTolerance.value = s.speech_pause_tolerance || 1500;
+    if (settingsTtsProvider) settingsTtsProvider.value = s.tts_provider || 'cartesia';
     settingsCartesiaKey.value = s.cartesia_key || '';
     settingsCartesiaVoice.value = s.cartesia_voice || '79a125e8-cd45-4c13-8a67-188112f4dd22';
+    updateTtsGroupVisibility();
     settingsModal.style.display = 'flex';
 }
 
@@ -188,6 +202,14 @@ if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
 if (openSettingsSetupBtn) openSettingsSetupBtn.addEventListener('click', openSettingsModal);
 if (customizeModelLink) customizeModelLink.addEventListener('click', openSettingsModal);
 if (closeSettingsBtn) closeSettingsBtn.addEventListener('click', closeSettingsModal);
+
+if (settingsTtsProvider) {
+    settingsTtsProvider.addEventListener('change', () => {
+        updateTtsGroupVisibility();
+        saveSettings(readSettingsFromForm());
+        updateSettingsPillStatus();
+    });
+}
 
 // Settings Tab Navigation
 document.querySelectorAll('.settings-tab-btn').forEach(btn => {
@@ -243,13 +265,14 @@ function readSettingsFromForm() {
         llm_key: settingsLlmKey?.value.trim() || '',
         deepgram_key: settingsDeepgramKey?.value.trim() || '',
         speech_pause_tolerance: parseInt(settingsPauseTolerance?.value) || 1500,
+        tts_provider: settingsTtsProvider?.value || 'cartesia',
         cartesia_key: settingsCartesiaKey?.value.trim() || '',
         cartesia_voice: settingsCartesiaVoice?.value.trim() || '79a125e8-cd45-4c13-8a67-188112f4dd22'
     };
 }
 
 // Auto-save on input or change
-[settingsLlmPreset, settingsLlmEndpoint, settingsLlmModel, settingsLlmKey, settingsDeepgramKey, settingsPauseTolerance, settingsCartesiaKey, settingsCartesiaVoice].forEach(input => {
+[settingsLlmPreset, settingsLlmEndpoint, settingsLlmModel, settingsLlmKey, settingsDeepgramKey, settingsPauseTolerance, settingsTtsProvider, settingsCartesiaKey, settingsCartesiaVoice].forEach(input => {
     if (input) {
         input.addEventListener('input', () => {
             saveSettings(readSettingsFromForm());
@@ -702,9 +725,89 @@ function playAudioChunk(arrayBuffer) {
     source.onended = () => {
         const idx = activeAudioSources.indexOf(source);
         if (idx !== -1) activeAudioSources.splice(idx, 1);
-        if (activeAudioSources.length === 0 && speechActivityIndicator) {
+        if (activeAudioSources.length === 0 && !isBrowserTtsActive && speechActivityIndicator) {
             speechActivityIndicator.innerHTML = '<span class="status-dot"></span> <span class="indicator-text">Listening...</span>';
         }
+    };
+}
+
+// --- Web Speech API (Free Built-in TTS Fallback) ---
+let browserTtsQueue = [];
+let isBrowserTtsActive = false;
+let isCartesiaFallbackActive = false;
+
+function cancelBrowserTts() {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+    }
+    browserTtsQueue = [];
+    isBrowserTtsActive = false;
+}
+
+function processBrowserTtsQueue() {
+    if (!('speechSynthesis' in window)) return;
+    if (isBrowserTtsActive || browserTtsQueue.length === 0) return;
+
+    const nextText = browserTtsQueue.shift();
+    if (!nextText) {
+        processBrowserTtsQueue();
+        return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(nextText);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
+
+    // Pick a high quality natural English voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.lang.startsWith('en') && (
+        v.name.includes('Natural') || 
+        v.name.includes('Online') || 
+        v.name.includes('Google') || 
+        v.name.includes('Jenny') || 
+        v.name.includes('Guy') || 
+        v.name.includes('Samantha') || 
+        v.name.includes('Daniel')
+    )) || voices.find(v => v.lang.startsWith('en'));
+
+    if (preferredVoice) utterance.voice = preferredVoice;
+
+    utterance.onstart = () => {
+        isBrowserTtsActive = true;
+        if (speechActivityIndicator) {
+            speechActivityIndicator.innerHTML = '<span class="status-dot" style="background:#a78bfa;"></span> <span class="indicator-text" style="color:#c4b5fd;">AI Speaking (Free Voice)...</span>';
+        }
+    };
+
+    const finishUtterance = () => {
+        isBrowserTtsActive = false;
+        if (browserTtsQueue.length > 0) {
+            processBrowserTtsQueue();
+        } else if (activeAudioSources.length === 0 && speechActivityIndicator) {
+            speechActivityIndicator.innerHTML = '<span class="status-dot"></span> <span class="indicator-text">Listening...</span>';
+        }
+    };
+
+    utterance.onend = finishUtterance;
+    utterance.onerror = (e) => {
+        console.warn('SpeechSynthesis error:', e);
+        finishUtterance();
+    };
+
+    window.speechSynthesis.speak(utterance);
+}
+
+function speakBrowserChunk(text) {
+    if (!('speechSynthesis' in window)) return;
+    const clean = text.replace(/\s+/g, ' ').trim();
+    if (!clean) return;
+    browserTtsQueue.push(clean);
+    processBrowserTtsQueue();
+}
+
+if ('speechSynthesis' in window) {
+    window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
     };
 }
 
@@ -720,6 +823,9 @@ function cancelAssistantSpeech() {
     activeAudioSources = [];
     nextAudioPlayTime = 0;
     
+    // Stop browser TTS
+    cancelBrowserTts();
+
     if (cartesiaWs && cartesiaWs.readyState === WebSocket.OPEN && currentContextId && isCartesiaContextActive) {
         try {
             cartesiaWs.send(JSON.stringify({
@@ -883,6 +989,20 @@ function connectCartesia(apiKey, voiceId, retryCount = 0) {
                         return;
                     }
                     console.error('Cartesia error:', errStr);
+                    const isCreditOrLimitError = errStr.toLowerCase().includes('credit') || 
+                                                 errStr.toLowerCase().includes('quota') || 
+                                                 errStr.toLowerCase().includes('limit') || 
+                                                 errStr.toLowerCase().includes('plan') || 
+                                                 errStr.toLowerCase().includes('payment') || 
+                                                 msg.status_code === 402 || 
+                                                 msg.status_code === 401;
+
+                    if (isCreditOrLimitError) {
+                        isCartesiaFallbackActive = true;
+                        renderTranscript('assistant', `⚠️ Cartesia credits or plan limit reached. Automatically switched to Free Browser Voice.`);
+                        return;
+                    }
+
                     renderTranscript('assistant', `⚠️ Voice Synthesis Error: ${msg.error || 'Check Cartesia key'}`);
                     return;
                 }
@@ -918,13 +1038,14 @@ function connectCartesia(apiKey, voiceId, retryCount = 0) {
         console.log('Cartesia WebSocket closed:', e.code, e.reason);
         currentContextId = null;
         isCartesiaContextActive = false;
-        if (isCallActive && e.code !== 1000 && e.code !== 1005 && retryCount < 3) {
+        if (isCallActive && e.code !== 1000 && e.code !== 1005 && retryCount < 2) {
             console.log(`Cartesia disconnected, reconnecting in 1s (attempt ${retryCount + 1})...`);
             setTimeout(() => {
                 if (isCallActive) connectCartesia(apiKey, voiceId, retryCount + 1);
             }, 1000);
         } else if (isCallActive && e.code !== 1000 && e.code !== 1005) {
-            renderTranscript('assistant', `⚠️ Voice Synthesis disconnected (${e.code}: ${e.reason || 'Check Cartesia key'}).`);
+            isCartesiaFallbackActive = true;
+            renderTranscript('assistant', `⚠️ Cartesia disconnected (${e.code}). Seamlessly switched to Free Browser Voice.`);
         }
     };
 }
@@ -1248,7 +1369,18 @@ async function triggerAssistantTurn(userText) {
 }
 
 function sendTtsChunk(text, voiceId, continueFlag) {
-    if (!cartesiaWs || cartesiaWs.readyState !== WebSocket.OPEN) return;
+    const s = getSettings();
+    const useBrowser = (s.tts_provider === 'browser') || isCartesiaFallbackActive;
+
+    if (useBrowser) {
+        speakBrowserChunk(text);
+        return;
+    }
+
+    if (!cartesiaWs || cartesiaWs.readyState !== WebSocket.OPEN) {
+        speakBrowserChunk(text);
+        return;
+    }
     if (!currentContextId) return;
     try {
         cartesiaWs.send(JSON.stringify({
@@ -1262,10 +1394,15 @@ function sendTtsChunk(text, voiceId, continueFlag) {
         isCartesiaContextActive = true;
     } catch (e) {
         console.error('Cartesia send error', e);
+        speakBrowserChunk(text);
     }
 }
 
 function sendTtsFinalize(voiceId) {
+    const s = getSettings();
+    const useBrowser = (s.tts_provider === 'browser') || isCartesiaFallbackActive;
+    if (useBrowser) return;
+
     if (!cartesiaWs || cartesiaWs.readyState !== WebSocket.OPEN) return;
     if (!currentContextId || !isCartesiaContextActive) return;
     try {
@@ -1337,8 +1474,10 @@ joinBtn.addEventListener('click', async () => {
         openSettingsModal();
         return;
     }
-    if (!settings.cartesia_key) {
-        alert("Cartesia API Key is missing. Please enter it in Settings under the Cartesia tab.");
+
+    const isCartesiaEngine = (settings.tts_provider || 'cartesia') === 'cartesia';
+    if (isCartesiaEngine && !settings.cartesia_key) {
+        alert("Cartesia API Key is missing. Please enter it in Settings, or switch TTS Voice Engine to 'Browser Built-in Voice' for 100% free speech.");
         openSettingsModal();
         return;
     }
@@ -1392,9 +1531,12 @@ joinBtn.addEventListener('click', async () => {
         local.unshift(newRecord);
         saveLocalSessions(local);
 
-        // Connect direct WebSockets
+        // Connect STT & TTS
         connectDeepgram(settings.deepgram_key);
-        connectCartesia(settings.cartesia_key, settings.cartesia_voice);
+        isCartesiaFallbackActive = !isCartesiaEngine;
+        if (isCartesiaEngine && settings.cartesia_key) {
+            connectCartesia(settings.cartesia_key, settings.cartesia_voice);
+        }
 
         // Switch UI to active call
         isCallActive = true;
