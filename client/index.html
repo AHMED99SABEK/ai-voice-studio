@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <title>AI Voice Studio</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="sidebar glass-panel">
+            <div class="sidebar-header">
+                <div class="logo-group">
+                    <div class="logo-orb"></div>
+                    <h2>Voice Studio</h2>
+                </div>
+                <div class="sidebar-header-actions">
+                    <button id="settings-btn" class="icon-btn" title="Settings (API Keys & Model)">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    </button>
+                    <button id="new-chat-btn" class="icon-btn" title="New Session">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="sidebar-section-title">Past Voice Sessions</div>
+            <div class="session-list" id="session-list">
+                <div class="loading-history">Loading history...</div>
+            </div>
+        </aside>
+
+        <div id="main-area">
+            <!-- Setup Screen -->
+            <div id="setup-screen" class="screen active">
+                <div class="glass-panel setup-card">
+                    <div class="setup-header">
+                        <div class="setup-badge-row">
+                            <div class="setup-badge">Real-time Multimodal Voice</div>
+                            <button id="open-settings-setup-btn" class="settings-pill-btn" title="Open Settings to add API keys">
+                                <span class="pill-icon">⚙️</span>
+                                <span id="keys-status-text">Keys: Not Configured</span>
+                            </button>
+                        </div>
+                        <h1>Start New Voice Session</h1>
+                        <p>Configure your model provider and AI role instructions before connecting.</p>
+                    </div>
+
+                    <div class="setup-body">
+                        <!-- Session Title -->
+                        <div class="form-group">
+                            <label for="session-title-input">Session Title <span class="label-hint">(Optional)</span></label>
+                            <input type="text" id="session-title-input" class="text-input" placeholder="e.g., Python System Design Mock Interview" maxlength="60">
+                        </div>
+
+                        <!-- Provider Selection -->
+                        <div class="form-group">
+                            <div class="label-row">
+                                <label for="provider-select">LLM Provider & Model</label>
+                                <a href="javascript:void(0)" id="customize-model-link" class="label-action-link">Customize Model & Keys ⚙️</a>
+                            </div>
+                            <div class="select-wrapper">
+                                <select id="provider-select" class="custom-select">
+                                    <option value="deepseek">DeepSeek (deepseek-chat) — Recommended</option>
+                                    <option value="openai">OpenAI (gpt-4o-mini)</option>
+                                    <option value="groq">Groq (llama-3.3-70b-versatile)</option>
+                                    <option value="openrouter">OpenRouter (deepseek/deepseek-chat)</option>
+                                    <option value="custom">Custom Endpoint & Model (from Settings)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- System Prompt & Role Configuration -->
+                        <div class="form-group">
+                            <div class="label-row">
+                                <label for="system-prompt-input">System Prompt / Persona Role</label>
+                                <span class="label-hint">Set custom instructions upfront</span>
+                            </div>
+                            
+                            <!-- Persona Preset Chips -->
+                            <div class="preset-chips" id="preset-chips">
+                                <button type="button" class="chip active" data-prompt="">General Assistant</button>
+                                <button type="button" class="chip" data-prompt="You are a Senior Software Architect conducting a technical system design mock interview. Ask insightful technical questions, challenge my trade-offs, and draw architectural Mermaid diagrams on screen when appropriate.">System Design Interviewer</button>
+                                <button type="button" class="chip" data-prompt="You are a patient, expert coding tutor. Explain concepts intuitively with step-by-step guidance, use syntax-highlighted code snippets, and verify my understanding with short check-in questions.">Coding Tutor</button>
+                                <button type="button" class="chip" data-prompt="You are a sharp startup advisor and brainstorming partner. Help me stress-test product ideas, identify blind spots, and diagram workflows using Mermaid.">Startup Advisor</button>
+                                <button type="button" class="chip" data-prompt="You are a debate coach. Take the counter-perspective on any topic I present, analyze my arguments for logical fallacies, and help me refine my rhetoric.">Debate Coach</button>
+                            </div>
+
+                            <!-- My Personas Section -->
+                            <div id="my-personas-section" class="my-personas-section" style="display:none;">
+                                <div class="my-personas-header">
+                                    <span class="my-personas-label">⭐ My Personas</span>
+                                </div>
+                                <div class="preset-chips" id="my-personas-chips">
+                                    <!-- dynamically populated -->
+                                </div>
+                            </div>
+
+                            <textarea id="system-prompt-input" class="textarea-input" rows="4" placeholder="Type custom instructions for the AI's role, tone, or specialty..."></textarea>
+                            <div class="save-persona-row">
+                                <button type="button" id="save-persona-btn" class="save-persona-btn" title="Save current prompt as a reusable persona">
+                                    ＋ Save as Persona
+                                </button>
+                            </div>
+                        </div>
+
+                        <button id="join-btn" class="primary-btn pulse-glow">
+                            <span>Enter Room</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Active Session Screen (Centered Layout) -->
+            <div id="session-screen" class="screen">
+                <!-- Top Bar -->
+                <header class="top-bar glass-panel">
+                    <div class="session-info">
+                        <div class="title-with-rename">
+                            <h2 id="active-session-title">Active Session</h2>
+                            <button id="rename-active-btn" class="mini-icon-btn" title="Rename Session">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
+                        </div>
+                        <div class="session-meta-tags">
+                            <span class="meta-tag" id="active-provider-tag">DeepSeek</span>
+                            <span class="meta-tag status-live"><span class="status-dot"></span> Live</span>
+                        </div>
+                    </div>
+
+                    <!-- Centered Voice Wave & Timer -->
+                    <div class="center-call-status">
+                        <div class="timer-display" id="timer-display">10:00</div>
+                        <div class="timer-phase" id="timer-phase">Ready</div>
+                    </div>
+                    
+                    <div class="controls">
+                        <button id="start-call-btn" class="primary-btn glow-btn" style="display:none;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                            <span>Start Call</span>
+                        </button>
+                        <button id="commit-now-btn" class="control-btn" style="display:none;" title="Send spoken thought immediately without waiting for silence pause">⚡ Done Speaking</button>
+                        <button id="pause-btn" class="control-btn" style="display:none;">Pause</button>
+                        <button id="extend-btn" class="control-btn" style="display:none;">+5 Min</button>
+                        <button id="visuals-toggle-btn" class="control-btn" style="display:none;" title="Toggle Visual Canvas">Visuals</button>
+                        <button id="end-btn" class="danger-btn" style="display:none;">End Call</button>
+                    </div>
+                    
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="session-progress"></div>
+                    </div>
+                </header>
+                
+                <!-- Main Content Area: Centered Conversation -->
+                <main class="main-content centered-view">
+                    <!-- Central Conversation Column -->
+                    <div class="conversation-column glass-panel" id="transcript-panel">
+                        <div class="conversation-header">
+                            <div class="conv-header-left">
+                                <span class="conv-icon">🎙️</span>
+                                <span>Conversation Stream</span>
+                            </div>
+                            <div class="conv-header-right" id="speech-activity-indicator">
+                                <span class="indicator-text">Microphone Ready</span>
+                            </div>
+                        </div>
+
+                        <!-- Scrollable Message List -->
+                        <div class="transcript-messages" id="transcript-messages">
+                            <div class="transcript-empty">
+                                <div class="empty-icon">🎙️</div>
+                                <h3>Call Active</h3>
+                                <p>Voice channels connected. Speak or listen to the AI.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Slide-out / Side Visual Canvas (for Mermaid diagrams & code snippets) -->
+                    <div class="visual-canvas glass-panel" id="visual-canvas" style="display:none;">
+                        <div class="canvas-header">
+                            <span>Visual Workspace</span>
+                            <button id="close-canvas-btn" class="mini-icon-btn" title="Hide Canvas">✕</button>
+                        </div>
+                        <div class="canvas-body" id="canvas-body">
+                            <div class="canvas-placeholder">
+                                <p>Interactive diagrams and code snippets will appear here.</p>
+                            </div>
+                        </div>
+                    </div>
+                </main>
+            </div>
+
+            <!-- End Screen / Summary -->
+            <div id="end-screen" class="screen">
+                <div class="glass-panel end-panel">
+                    <div class="end-panel-header">
+                        <div class="check-icon">✓</div>
+                        <h2 id="end-session-title">Session Complete</h2>
+                        <div class="session-meta-tags" id="end-meta-tags"></div>
+                    </div>
+                    <div id="summary-content" class="summary-content">
+                        <div class="summary-loading">
+                            <div class="loading-spinner"></div>
+                            <p>DeepSeek is generating your structured summary and review...</p>
+                        </div>
+                    </div>
+                    <div class="actions">
+                        <button id="restart-btn" class="primary-btn">Start New Session</button>
+                        <button id="export-btn" class="secondary-btn">Download Visuals</button>
+                        <button id="delete-session-btn" class="danger-btn">Delete Session</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rename Modal Dialog -->
+    <div id="rename-modal" class="modal-backdrop" style="display:none;">
+        <div class="modal-card glass-panel">
+            <h3>Rename Session</h3>
+            <p>Enter a new name for this voice chat session:</p>
+            <input type="text" id="rename-input" class="text-input" placeholder="Session Title" maxlength="60">
+            <div class="modal-actions">
+                <button id="cancel-rename-btn" class="secondary-btn">Cancel</button>
+                <button id="confirm-rename-btn" class="primary-btn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal (BYOK & Dynamic Model Config) -->
+    <div id="settings-modal" class="modal-backdrop" style="display:none;">
+        <div class="modal-card glass-panel settings-modal-card">
+            <div class="modal-header">
+                <div class="modal-title-group">
+                    <span class="modal-icon">⚙️</span>
+                    <h3>Service & API Key Settings</h3>
+                </div>
+                <button id="close-settings-btn" class="mini-icon-btn" title="Close">✕</button>
+            </div>
+            <p class="settings-subtitle">Bring Your Own Keys (BYOK). All credentials and custom endpoints are stored exclusively in your browser's private storage (localStorage).</p>
+            
+            <div class="settings-tabs">
+                <button type="button" class="settings-tab-btn active" data-tab="tab-llm">LLM & Model</button>
+                <button type="button" class="settings-tab-btn" data-tab="tab-stt">Deepgram (STT)</button>
+                <button type="button" class="settings-tab-btn" data-tab="tab-tts">Cartesia (TTS)</button>
+            </div>
+
+            <!-- Tab: LLM -->
+            <div class="settings-tab-pane active" id="tab-llm">
+                <div class="form-group">
+                    <label for="settings-llm-preset">Quick Preset</label>
+                    <div class="select-wrapper">
+                        <select id="settings-llm-preset" class="custom-select">
+                            <option value="deepseek">DeepSeek (deepseek-chat)</option>
+                            <option value="openai">OpenAI (gpt-4o-mini)</option>
+                            <option value="groq">Groq (llama-3.3-70b-versatile)</option>
+                            <option value="openrouter">OpenRouter (deepseek/deepseek-chat)</option>
+                            <option value="custom">Custom OpenAI-Compatible Endpoint</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="settings-llm-endpoint">Endpoint / Base URL</label>
+                    <input type="url" id="settings-llm-endpoint" class="text-input" placeholder="https://api.deepseek.com/v1">
+                    <span class="field-hint">Any OpenAI-compatible completions endpoint.</span>
+                </div>
+                <div class="form-group">
+                    <label for="settings-llm-model">Model Name <span class="label-hint">(Not hardcoded, enter any model)</span></label>
+                    <input type="text" id="settings-llm-model" class="text-input" placeholder="e.g. deepseek-chat, gpt-4o-mini, llama-3.3-70b-versatile">
+                </div>
+                <div class="form-group">
+                    <label for="settings-llm-key">LLM API Key</label>
+                    <div class="input-with-toggle">
+                        <input type="password" id="settings-llm-key" class="text-input" placeholder="sk-...">
+                        <button type="button" class="toggle-visibility-btn" data-target="settings-llm-key" title="Show/Hide Key">👁️</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Deepgram STT -->
+            <div class="settings-tab-pane" id="tab-stt">
+                <div class="form-group">
+                    <label for="settings-deepgram-key">Deepgram API Key <span class="label-required">*</span></label>
+                    <div class="input-with-toggle">
+                        <input type="password" id="settings-deepgram-key" class="text-input" placeholder="Your Deepgram API Key">
+                        <button type="button" class="toggle-visibility-btn" data-target="settings-deepgram-key" title="Show/Hide Key">👁️</button>
+                    </div>
+                    <span class="field-hint">Required for real-time speech transcription. Get free credits at console.deepgram.com.</span>
+                </div>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label for="settings-pause-tolerance">Thinking / Pause Tolerance</label>
+                    <select id="settings-pause-tolerance" class="custom-select">
+                        <option value="1000">Snappy (1.0s silence)</option>
+                        <option value="1500" selected>Natural / Conversational (1.5s silence) — Recommended</option>
+                        <option value="2000">Relaxed / Thoughtful (2.0s silence)</option>
+                        <option value="2500">Extra Patient (2.5s silence)</option>
+                    </select>
+                    <span class="field-hint">Controls how long you can pause mid-sentence to think before the AI responds. Default is 1.5 seconds.</span>
+                </div>
+            </div>
+
+            <!-- Tab: Cartesia TTS -->
+            <div class="settings-tab-pane" id="tab-tts">
+                <div class="form-group">
+                    <label for="settings-cartesia-key">Cartesia API Key <span class="label-required">*</span></label>
+                    <div class="input-with-toggle">
+                        <input type="password" id="settings-cartesia-key" class="text-input" placeholder="Your Cartesia API Key">
+                        <button type="button" class="toggle-visibility-btn" data-target="settings-cartesia-key" title="Show/Hide Key">👁️</button>
+                    </div>
+                    <span class="field-hint">Required for ultra-low latency realistic voice synthesis. Get free credits at play.cartesia.ai.</span>
+                </div>
+                <div class="form-group">
+                    <label for="settings-cartesia-voice">Cartesia Voice ID <span class="label-hint">(Optional)</span></label>
+                    <input type="text" id="settings-cartesia-voice" class="text-input" placeholder="79a125e8-cd45-4c13-8a67-188112f4dd22">
+                    <span class="field-hint">Defaults to standard pleasant AI voice if left blank.</span>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" id="reset-settings-btn" class="secondary-btn" title="Reset all custom keys">Reset</button>
+                <button type="button" id="save-settings-btn" class="primary-btn">Save Settings</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
