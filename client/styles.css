@@ -1412,3 +1412,403 @@ body::after {
     color: var(--text-dim);
     margin-top: 4px;
 }
+
+/* ==========================================================================
+   RESPONSIVE STYLES
+   Breakpoints: tablet ≤900px | mobile-landscape ≤640px | mobile ≤480px
+   ========================================================================== */
+
+/* --- Tablet (≤900px): Collapse sidebar, shrink top bar --- */
+@media (max-width: 900px) {
+    .sidebar {
+        width: 220px;
+    }
+
+    .setup-card {
+        padding: 28px 22px;
+    }
+
+    .setup-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .top-bar {
+        margin: 10px 14px;
+        padding: 10px 16px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .center-call-status {
+        order: -1;
+        width: 100%;
+        align-items: center;
+    }
+
+    .timer-display {
+        font-size: 1.5rem;
+    }
+
+    .controls {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 6px;
+    }
+
+    .control-btn, .danger-btn {
+        padding: 7px 11px;
+        font-size: 0.8rem;
+    }
+
+    .main-content {
+        padding: 0 14px 14px 14px;
+        gap: 12px;
+    }
+
+    .transcript-messages {
+        padding: 16px;
+    }
+
+    .transcript-bubble {
+        max-width: 90%;
+    }
+
+    /* Visual canvas becomes bottom panel on tablet */
+    .visual-canvas {
+        max-width: 260px;
+    }
+}
+
+/* --- Mobile Landscape / Small Tablet (≤640px): Hide sidebar, single column --- */
+@media (max-width: 640px) {
+    html, body {
+        overflow: auto;
+    }
+
+    #app-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow: auto;
+    }
+
+    /* Sidebar collapses to a slim top strip */
+    .sidebar {
+        width: 100%;
+        height: auto;
+        border-radius: 0;
+        border-right: none;
+        border-bottom: 1px solid var(--border-subtle);
+        flex-direction: row;
+        align-items: center;
+        padding: 0;
+        flex-shrink: 0;
+    }
+
+    .sidebar-header {
+        flex: 1;
+        border-bottom: none;
+        padding: 12px 16px;
+    }
+
+    .sidebar-section-title {
+        display: none;
+    }
+
+    .session-list {
+        display: none;
+    }
+
+    #main-area {
+        flex: unset;
+        height: auto;
+        min-height: calc(100vh - 60px);
+        display: flex;
+        flex-direction: column;
+        overflow: visible;
+    }
+
+    .screen {
+        height: auto;
+        min-height: calc(100vh - 60px);
+        overflow: visible;
+    }
+
+    /* Setup screen */
+    #setup-screen {
+        padding: 16px;
+        align-items: stretch;
+    }
+
+    .setup-card {
+        max-width: 100%;
+        padding: 20px 16px;
+        gap: 18px;
+        border-radius: var(--radius-md);
+    }
+
+    .setup-header h1 {
+        font-size: 1.35rem;
+    }
+
+    .setup-header p {
+        font-size: 0.88rem;
+    }
+
+    .setup-badge-row {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .chip {
+        font-size: 0.76rem;
+        padding: 5px 11px;
+    }
+
+    .text-input, .custom-select, .textarea-input {
+        font-size: 0.88rem;
+        padding: 10px 13px;
+    }
+
+    .primary-btn {
+        width: 100%;
+        padding: 13px 20px;
+        font-size: 0.95rem;
+    }
+
+    /* Session screen */
+    #session-screen {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: calc(100vh - 60px);
+    }
+
+    .top-bar {
+        margin: 8px 10px;
+        padding: 10px 14px;
+        flex-wrap: wrap;
+        gap: 6px;
+        border-radius: var(--radius-md);
+    }
+
+    .session-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .title-with-rename h2 {
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 160px;
+    }
+
+    .center-call-status {
+        order: -1;
+        width: 100%;
+        padding: 4px 0;
+    }
+
+    .timer-display {
+        font-size: 1.35rem;
+    }
+
+    .timer-phase {
+        font-size: 0.68rem;
+    }
+
+    .controls {
+        flex-wrap: wrap;
+        gap: 5px;
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .control-btn, .danger-btn {
+        padding: 6px 10px;
+        font-size: 0.78rem;
+    }
+
+    .main-content {
+        flex: 1;
+        flex-direction: column;
+        padding: 0 10px 12px 10px;
+        gap: 10px;
+        height: auto;
+        overflow: visible;
+    }
+
+    /* Conversation column full width */
+    .conversation-column {
+        max-width: 100%;
+        margin: 0;
+        height: auto;
+        min-height: 400px;
+        max-height: 60vh;
+    }
+
+    .transcript-messages {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .transcript-bubble {
+        max-width: 95%;
+        padding: 11px 14px;
+    }
+
+    .bubble-content {
+        font-size: 0.9rem;
+    }
+
+    .bubble-content pre {
+        font-size: 0.78rem;
+        overflow-x: auto;
+    }
+
+    /* Visual canvas becomes a bottom sheet */
+    .visual-canvas {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        max-height: 45vh;
+        flex: unset;
+    }
+
+    .canvas-body {
+        max-height: calc(45vh - 50px);
+    }
+
+    /* Mermaid diagrams — scrollable on small screens */
+    .mermaid-diagram-svg {
+        overflow-x: auto;
+        padding: 12px 10px;
+    }
+
+    .mermaid-diagram-svg svg {
+        min-width: 280px;
+    }
+
+    /* End screen */
+    #end-screen {
+        padding: 16px;
+        align-items: stretch;
+    }
+
+    .end-panel {
+        max-width: 100%;
+        padding: 24px 16px;
+        gap: 18px;
+    }
+
+    .end-panel-header h2 {
+        font-size: 1.35rem;
+    }
+
+    .summary-content {
+        padding: 16px;
+        font-size: 0.88rem;
+        max-height: 40vh;
+    }
+
+    .actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .actions button {
+        width: 100%;
+    }
+
+    /* Modals — full width on mobile */
+    .modal-backdrop {
+        padding: 12px;
+        align-items: flex-end;
+    }
+
+    .modal-card {
+        max-width: 100%;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+        padding: 22px 18px;
+    }
+
+    .settings-modal-card {
+        max-width: 100%;
+        max-height: 92vh;
+        overflow-y: auto;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .settings-tabs {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    .settings-tab-btn {
+        font-size: 0.75rem;
+        padding: 7px 8px;
+        white-space: nowrap;
+    }
+
+    .modal-actions {
+        flex-direction: column-reverse;
+        gap: 8px;
+    }
+
+    .modal-actions button {
+        width: 100%;
+    }
+}
+
+/* --- Mobile Portrait (≤480px): Extra tightening --- */
+@media (max-width: 480px) {
+    .setup-header h1 {
+        font-size: 1.2rem;
+    }
+
+    .logo-group h2 {
+        font-size: 1rem;
+    }
+
+    .title-with-rename h2 {
+        font-size: 0.88rem;
+        max-width: 120px;
+    }
+
+    .timer-display {
+        font-size: 1.2rem;
+    }
+
+    .control-btn, .danger-btn {
+        padding: 5px 9px;
+        font-size: 0.74rem;
+    }
+
+    .transcript-bubble {
+        max-width: 98%;
+        padding: 10px 12px;
+    }
+
+    .bubble-content {
+        font-size: 0.86rem;
+    }
+
+    .preset-chips {
+        gap: 6px;
+    }
+
+    .chip {
+        font-size: 0.72rem;
+        padding: 4px 10px;
+    }
+
+    .mermaid-diagram-card {
+        margin: 8px 0;
+    }
+
+    .conversation-column {
+        max-height: 55vh;
+    }
+}
