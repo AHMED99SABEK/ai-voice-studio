@@ -21,7 +21,8 @@ const DEFAULT_SETTINGS = {
     llm_key: '',
     deepgram_key: '',
     cartesia_key: '',
-    cartesia_voice: '79a125e8-cd45-4c13-8a67-188112f4dd22',
+    cartesia_voice: '694f9389-aac1-45b6-b726-9d9369183238',
+    browser_voice: '',
     speech_pause_tolerance: 1500,
     tts_provider: 'cartesia'
 };
@@ -149,16 +150,50 @@ const settingsLlmKey = document.getElementById('settings-llm-key');
 const settingsDeepgramKey = document.getElementById('settings-deepgram-key');
 const settingsPauseTolerance = document.getElementById('settings-pause-tolerance');
 const settingsCartesiaKey = document.getElementById('settings-cartesia-key');
+const settingsCartesiaPreset = document.getElementById('settings-cartesia-preset');
 const settingsCartesiaVoice = document.getElementById('settings-cartesia-voice');
 const settingsTtsProvider = document.getElementById('settings-tts-provider');
 const cartesiaConfigGroup = document.getElementById('cartesia-config-group');
+const settingsBrowserVoice = document.getElementById('settings-browser-voice');
+const browserConfigGroup = document.getElementById('browser-config-group');
+const testVoiceBtn = document.getElementById('test-voice-btn');
+const testVoiceStatus = document.getElementById('test-voice-status');
 const resetSettingsBtn = document.getElementById('reset-settings-btn');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
+
+function populateBrowserVoices() {
+    if (!('speechSynthesis' in window) || !settingsBrowserVoice) return;
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) return;
+
+    const saved = getSettings().browser_voice || '';
+    settingsBrowserVoice.innerHTML = '';
+
+    const enVoices = voices.filter(v => v.lang.startsWith('en'));
+    const otherVoices = voices.filter(v => !v.lang.startsWith('en'));
+    const all = [...enVoices, ...otherVoices];
+
+    all.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.name;
+        opt.textContent = `${v.name} (${v.lang})${v.default ? ' — Default' : ''}`;
+        if (saved ? v.name === saved : (v.name.includes('Natural') || v.name.includes('Google') || v.name.includes('Samantha') || v.name.includes('Jenny') || v.name.includes('Zira'))) {
+            opt.selected = true;
+        }
+        settingsBrowserVoice.appendChild(opt);
+    });
+}
 
 function updateTtsGroupVisibility() {
     const isCartesia = (settingsTtsProvider?.value || 'cartesia') === 'cartesia';
     if (cartesiaConfigGroup) {
         cartesiaConfigGroup.style.display = isCartesia ? 'block' : 'none';
+    }
+    if (browserConfigGroup) {
+        browserConfigGroup.style.display = isCartesia ? 'none' : 'block';
+    }
+    if (!isCartesia) {
+        populateBrowserVoices();
     }
 }
 
@@ -189,13 +224,30 @@ function openSettingsModal() {
     if (settingsPauseTolerance) settingsPauseTolerance.value = s.speech_pause_tolerance || 1500;
     if (settingsTtsProvider) settingsTtsProvider.value = s.tts_provider || 'cartesia';
     settingsCartesiaKey.value = s.cartesia_key || '';
-    settingsCartesiaVoice.value = s.cartesia_voice || '79a125e8-cd45-4c13-8a67-188112f4dd22';
+    
+    const voiceId = s.cartesia_voice || '694f9389-aac1-45b6-b726-9d9369183238';
+    if (settingsCartesiaVoice) settingsCartesiaVoice.value = voiceId;
+    if (settingsCartesiaPreset) {
+        const match = Array.from(settingsCartesiaPreset.options).find(o => o.value === voiceId);
+        if (match) {
+            settingsCartesiaPreset.value = voiceId;
+        } else {
+            settingsCartesiaPreset.value = 'custom';
+        }
+    }
+
+    populateBrowserVoices();
+    if (settingsBrowserVoice && s.browser_voice) {
+        settingsBrowserVoice.value = s.browser_voice;
+    }
+
     updateTtsGroupVisibility();
     settingsModal.style.display = 'flex';
 }
 
 function closeSettingsModal() {
     settingsModal.style.display = 'none';
+    if (testVoiceStatus) testVoiceStatus.textContent = '';
 }
 
 if (settingsBtn) settingsBtn.addEventListener('click', openSettingsModal);
@@ -208,6 +260,99 @@ if (settingsTtsProvider) {
         updateTtsGroupVisibility();
         saveSettings(readSettingsFromForm());
         updateSettingsPillStatus();
+    });
+}
+
+if (settingsCartesiaPreset) {
+    settingsCartesiaPreset.addEventListener('change', () => {
+        const val = settingsCartesiaPreset.value;
+        if (val !== 'custom') {
+            settingsCartesiaVoice.value = val;
+        }
+        saveSettings(readSettingsFromForm());
+    });
+}
+
+if (settingsCartesiaVoice) {
+    settingsCartesiaVoice.addEventListener('input', () => {
+        const val = settingsCartesiaVoice.value.trim();
+        const match = Array.from(settingsCartesiaPreset.options).find(o => o.value === val);
+        if (match) {
+            settingsCartesiaPreset.value = val;
+        } else {
+            settingsCartesiaPreset.value = 'custom';
+        }
+    });
+}
+
+// Voice Test Preview Button
+let testAudioObj = null;
+if (testVoiceBtn) {
+    testVoiceBtn.addEventListener('click', async () => {
+        const s = readSettingsFromForm();
+        if (testVoiceStatus) testVoiceStatus.textContent = 'Playing test audio...';
+
+        if (s.tts_provider === 'browser') {
+            if (!('speechSynthesis' in window)) {
+                if (testVoiceStatus) testVoiceStatus.textContent = 'Browser voice not supported.';
+                return;
+            }
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance("Hello! This is a preview of the voice you selected.");
+            utterance.rate = 1.05;
+            const voices = window.speechSynthesis.getVoices();
+            const picked = voices.find(v => v.name === s.browser_voice);
+            if (picked) utterance.voice = picked;
+            utterance.onend = () => {
+                if (testVoiceStatus) testVoiceStatus.textContent = 'Preview finished.';
+                setTimeout(() => { if (testVoiceStatus) testVoiceStatus.textContent = ''; }, 3000);
+            };
+            utterance.onerror = () => {
+                if (testVoiceStatus) testVoiceStatus.textContent = 'Voice preview error.';
+            };
+            window.speechSynthesis.speak(utterance);
+        } else {
+            if (!s.cartesia_key) {
+                if (testVoiceStatus) testVoiceStatus.textContent = 'Enter your Cartesia key above first.';
+                setTimeout(() => { if (testVoiceStatus) testVoiceStatus.textContent = ''; }, 3500);
+                return;
+            }
+            try {
+                if (testAudioObj) {
+                    testAudioObj.pause();
+                    testAudioObj = null;
+                }
+                const res = await fetch('https://api.cartesia.ai/tts/bytes', {
+                    method: 'POST',
+                    headers: {
+                        'Cartesia-Version': '2024-06-10',
+                        'X-API-Key': s.cartesia_key,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model_id: 'sonic-3.6',
+                        transcript: 'Hello! I am your AI assistant. How does my voice sound to you?',
+                        voice: { mode: 'id', id: s.cartesia_voice || '694f9389-aac1-45b6-b726-9d9369183238' },
+                        output_format: { container: 'wav', sample_rate: 24000, encoding: 'pcm_s16le' }
+                    })
+                });
+                if (!res.ok) {
+                    const err = await res.text();
+                    throw new Error(err || `Status ${res.status}`);
+                }
+                const blob = await res.blob();
+                testAudioObj = new Audio(URL.createObjectURL(blob));
+                testAudioObj.play();
+                testAudioObj.onended = () => {
+                    if (testVoiceStatus) testVoiceStatus.textContent = 'Preview finished.';
+                    setTimeout(() => { if (testVoiceStatus) testVoiceStatus.textContent = ''; }, 3000);
+                };
+            } catch (err) {
+                console.error('Test voice error:', err);
+                if (testVoiceStatus) testVoiceStatus.textContent = 'Cartesia error (check key / credits).';
+                setTimeout(() => { if (testVoiceStatus) testVoiceStatus.textContent = ''; }, 4000);
+            }
+        }
     });
 }
 
@@ -267,12 +412,13 @@ function readSettingsFromForm() {
         speech_pause_tolerance: parseInt(settingsPauseTolerance?.value) || 1500,
         tts_provider: settingsTtsProvider?.value || 'cartesia',
         cartesia_key: settingsCartesiaKey?.value.trim() || '',
-        cartesia_voice: settingsCartesiaVoice?.value.trim() || '79a125e8-cd45-4c13-8a67-188112f4dd22'
+        cartesia_voice: settingsCartesiaVoice?.value.trim() || '694f9389-aac1-45b6-b726-9d9369183238',
+        browser_voice: settingsBrowserVoice?.value || ''
     };
 }
 
 // Auto-save on input or change
-[settingsLlmPreset, settingsLlmEndpoint, settingsLlmModel, settingsLlmKey, settingsDeepgramKey, settingsPauseTolerance, settingsTtsProvider, settingsCartesiaKey, settingsCartesiaVoice].forEach(input => {
+[settingsLlmPreset, settingsLlmEndpoint, settingsLlmModel, settingsLlmKey, settingsDeepgramKey, settingsPauseTolerance, settingsTtsProvider, settingsCartesiaKey, settingsCartesiaVoice, settingsBrowserVoice].forEach(input => {
     if (input) {
         input.addEventListener('input', () => {
             saveSettings(readSettingsFromForm());
@@ -758,19 +904,22 @@ function processBrowserTtsQueue() {
     utterance.rate = 1.05;
     utterance.pitch = 1.0;
 
-    // Pick a high quality natural English voice if available
+    // Pick user-selected voice, or natural English voice if available
     const voices = window.speechSynthesis.getVoices();
-    const preferredVoice = voices.find(v => v.lang.startsWith('en') && (
-        v.name.includes('Natural') || 
-        v.name.includes('Online') || 
-        v.name.includes('Google') || 
-        v.name.includes('Jenny') || 
-        v.name.includes('Guy') || 
-        v.name.includes('Samantha') || 
-        v.name.includes('Daniel')
-    )) || voices.find(v => v.lang.startsWith('en'));
-
-    if (preferredVoice) utterance.voice = preferredVoice;
+    const savedVoice = getSettings().browser_voice;
+    let chosenVoice = savedVoice ? voices.find(v => v.name === savedVoice) : null;
+    if (!chosenVoice) {
+        chosenVoice = voices.find(v => v.lang.startsWith('en') && (
+            v.name.includes('Natural') || 
+            v.name.includes('Online') || 
+            v.name.includes('Google') || 
+            v.name.includes('Jenny') || 
+            v.name.includes('Guy') || 
+            v.name.includes('Samantha') || 
+            v.name.includes('Daniel')
+        )) || voices.find(v => v.lang.startsWith('en'));
+    }
+    if (chosenVoice) utterance.voice = chosenVoice;
 
     utterance.onstart = () => {
         isBrowserTtsActive = true;
