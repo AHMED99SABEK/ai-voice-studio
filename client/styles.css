@@ -1413,6 +1413,90 @@ body::after {
     margin-top: 4px;
 }
 
+/* --- Draft Bubble (Live Speech Composing) --- */
+.transcript-bubble.draft {
+    align-self: flex-end;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(99, 102, 241, 0.12));
+    border: 1px dashed rgba(139, 92, 246, 0.45);
+    color: #c7d2fe;
+    border-bottom-right-radius: 4px;
+    position: relative;
+    max-width: 82%;
+}
+
+.draft-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #a78bfa;
+    margin-bottom: 2px;
+}
+
+.draft-label .draft-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #a78bfa;
+    animation: pulse 1.5s infinite;
+}
+
+.draft-content {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: #e0e7ff;
+    min-height: 1.2em;
+}
+
+.draft-content .interim {
+    color: rgba(167, 139, 250, 0.6);
+    font-style: italic;
+}
+
+/* --- Listening Mode Toggle in Controls --- */
+#listening-mode-toggle {
+    background: rgba(139, 92, 246, 0.12);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#listening-mode-toggle:hover {
+    background: rgba(139, 92, 246, 0.25);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+#listening-mode-toggle.manual-active {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+    border-color: rgba(34, 197, 94, 0.4);
+}
+
+#commit-now-btn.manual-mode {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.25));
+    color: #86efac;
+    border-color: rgba(34, 197, 94, 0.5);
+    font-size: 0.88rem;
+    padding: 8px 16px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+#commit-now-btn.manual-mode:hover {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.4), rgba(16, 185, 129, 0.4));
+    border-color: rgba(34, 197, 94, 0.7);
+}
+
 /* ==========================================================================
    RESPONSIVE STYLES
    Breakpoints: tablet ≤900px | mobile-landscape ≤640px | mobile ≤480px

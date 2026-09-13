@@ -24,7 +24,8 @@ const DEFAULT_SETTINGS = {
     cartesia_voice: '694f9389-aac1-45b6-b726-9d9369183238',
     browser_voice: '',
     speech_pause_tolerance: 1500,
-    tts_provider: 'cartesia'
+    tts_provider: 'cartesia',
+    listening_mode: 'auto'
 };
 
 const LLM_PRESETS = {
@@ -160,6 +161,8 @@ const testVoiceBtn = document.getElementById('test-voice-btn');
 const testVoiceStatus = document.getElementById('test-voice-status');
 const resetSettingsBtn = document.getElementById('reset-settings-btn');
 const saveSettingsBtn = document.getElementById('save-settings-btn');
+const settingsListeningMode = document.getElementById('settings-listening-mode');
+const listeningModeToggle = document.getElementById('listening-mode-toggle');
 
 function populateBrowserVoices() {
     if (!('speechSynthesis' in window) || !settingsBrowserVoice) return;
@@ -222,6 +225,7 @@ function openSettingsModal() {
     settingsLlmKey.value = s.llm_key || '';
     settingsDeepgramKey.value = s.deepgram_key || '';
     if (settingsPauseTolerance) settingsPauseTolerance.value = s.speech_pause_tolerance || 1500;
+    if (settingsListeningMode) settingsListeningMode.value = s.listening_mode || 'auto';
     if (settingsTtsProvider) settingsTtsProvider.value = s.tts_provider || 'cartesia';
     settingsCartesiaKey.value = s.cartesia_key || '';
     
@@ -413,18 +417,21 @@ function readSettingsFromForm() {
         tts_provider: settingsTtsProvider?.value || 'cartesia',
         cartesia_key: settingsCartesiaKey?.value.trim() || '',
         cartesia_voice: settingsCartesiaVoice?.value.trim() || '694f9389-aac1-45b6-b726-9d9369183238',
-        browser_voice: settingsBrowserVoice?.value || ''
+        browser_voice: settingsBrowserVoice?.value || '',
+        listening_mode: settingsListeningMode?.value || 'auto'
     };
 }
 
 // Auto-save on input or change
-[settingsLlmPreset, settingsLlmEndpoint, settingsLlmModel, settingsLlmKey, settingsDeepgramKey, settingsPauseTolerance, settingsTtsProvider, settingsCartesiaKey, settingsCartesiaVoice, settingsBrowserVoice].forEach(input => {
+[settingsLlmPreset, settingsLlmEndpoint, settingsLlmModel, settingsLlmKey, settingsDeepgramKey, settingsPauseTolerance, settingsListeningMode, settingsTtsProvider, settingsCartesiaKey, settingsCartesiaVoice, settingsBrowserVoice].forEach(input => {
     if (input) {
         input.addEventListener('input', () => {
             saveSettings(readSettingsFromForm());
+            updateListeningModeUI();
         });
         input.addEventListener('change', () => {
             saveSettings(readSettingsFromForm());
+            updateListeningModeUI();
         });
     }
 });
@@ -824,6 +831,7 @@ function stopAudio() {
         micStream.getTracks().forEach(track => track.stop());
         micStream = null;
     }
+    clearDraftBubble();
     cancelAssistantSpeech();
 }
 
@@ -992,12 +1000,60 @@ function cancelAssistantSpeech() {
 // --- Direct Browser Voice Engine ---
 let currentUtteranceChunks = [];
 let speechFinalTimeout = null;
+let draftUserBubble = null;
+
+function updateDraftBubble(chunks, interimText = '') {
+    if (!transcriptMessages) return;
+    const fullFinal = (chunks || []).join(' ').trim();
+    const hasContent = fullFinal.length > 0 || (interimText && interimText.trim().length > 0);
+
+    if (!hasContent) {
+        clearDraftBubble();
+        return;
+    }
+
+    // Clear empty state prompt if visible
+    const emptyHint = transcriptMessages.querySelector('.transcript-empty');
+    if (emptyHint) emptyHint.remove();
+
+    if (!draftUserBubble) {
+        draftUserBubble = document.createElement('div');
+        draftUserBubble.className = 'transcript-bubble draft';
+        transcriptMessages.appendChild(draftUserBubble);
+    }
+
+    const interimHtml = (interimText && interimText.trim().length > 0)
+        ? `<span class="interim">${fullFinal ? ' ' : ''}${escapeHtml(interimText.trim())}</span>`
+        : '';
+
+    draftUserBubble.innerHTML = `
+        <div class="draft-label"><span class="draft-dot"></span> Composing (You)</div>
+        <div class="draft-content">${escapeHtml(fullFinal)}${interimHtml}</div>
+    `;
+
+    const isNearBottom = transcriptMessages.scrollHeight - transcriptMessages.scrollTop - transcriptMessages.clientHeight < 220;
+    if (isNearBottom) {
+        transcriptMessages.scrollTo({
+            top: transcriptMessages.scrollHeight,
+            behavior: 'smooth'
+        });
+    }
+}
+
+function clearDraftBubble() {
+    if (draftUserBubble) {
+        draftUserBubble.remove();
+        draftUserBubble = null;
+    }
+}
 
 function commitUserUtterance() {
     if (speechFinalTimeout) {
         clearTimeout(speechFinalTimeout);
         speechFinalTimeout = null;
     }
+
+    clearDraftBubble();
     
     // Only commit if finalized chunks were received
     if (!currentUtteranceChunks || currentUtteranceChunks.length === 0) return;
@@ -1042,14 +1098,17 @@ function connectDeepgram(apiKey, retryCount = 0) {
             // 1. User began vocalizing (VAD) -> update status dot only; DO NOT interrupt assistant speech!
             if (data.type === 'SpeechStarted') {
                 if (speechActivityIndicator) {
-                    speechActivityIndicator.innerHTML = '<span class="status-dot" style="background:#22c55e;"></span> <span class="indicator-text">Listening (Speech detected)...</span>';
+                    speechActivityIndicator.innerHTML = '<span class="status-dot" style="background:#22c55e;"></span> <span class="indicator-text">Listening...</span>';
                 }
                 return;
             }
 
-            // 2. User stopped speaking (VAD UtteranceEnd) -> commit turn if chunks exist
+            // 2. User stopped speaking (VAD UtteranceEnd) -> in auto mode, commit turn if chunks exist
             if (data.type === 'UtteranceEnd') {
-                commitUserUtterance();
+                const currentSettings = getSettings();
+                if (currentSettings.listening_mode !== 'manual') {
+                    commitUserUtterance();
+                }
                 return;
             }
 
@@ -1069,25 +1128,34 @@ function connectDeepgram(apiKey, retryCount = 0) {
                     }
 
                     if (speechActivityIndicator) {
-                        speechActivityIndicator.innerHTML = `<span class="status-dot" style="background:#22c55e;"></span> <span class="indicator-text">${escapeHtml(transcript.slice(0, 35))}...</span>`;
+                        speechActivityIndicator.innerHTML = `<span class="status-dot" style="background:#22c55e;"></span> <span class="indicator-text">Listening...</span>`;
                     }
 
-                    // ONLY accumulate stable, finalized segments!
-                    // Interim results (isFinal: false) are WIP hypotheses and must NOT be committed.
+                    // Accumulate stable, finalized segments into draft bubble
                     if (isFinal) {
                         currentUtteranceChunks.push(transcript);
+                        updateDraftBubble(currentUtteranceChunks, '');
                         
-                        // Fallback silence timer after finalized speech chunk
-                        if (speechFinalTimeout) clearTimeout(speechFinalTimeout);
-                        speechFinalTimeout = setTimeout(() => {
-                            commitUserUtterance();
-                        }, fallbackTimeoutMs);
+                        const currentSettings = getSettings();
+                        if (currentSettings.listening_mode !== 'manual') {
+                            // Fallback silence timer after finalized speech chunk in Auto mode
+                            if (speechFinalTimeout) clearTimeout(speechFinalTimeout);
+                            speechFinalTimeout = setTimeout(() => {
+                                commitUserUtterance();
+                            }, fallbackTimeoutMs);
+                        }
+                    } else {
+                        // Interim hypothesis -> display preview live in the chat draft bubble!
+                        updateDraftBubble(currentUtteranceChunks, transcript);
                     }
                 }
 
-                // If Deepgram endpointing detected end of speech, commit immediately!
+                // If Deepgram endpointing detected end of speech, commit in Auto mode
                 if (speechFinal) {
-                    commitUserUtterance();
+                    const currentSettings = getSettings();
+                    if (currentSettings.listening_mode !== 'manual') {
+                        commitUserUtterance();
+                    }
                 }
             }
         } catch (e) {
@@ -1701,7 +1769,10 @@ joinBtn.addEventListener('click', async () => {
         activeProviderTag.textContent = (settings.llm_model || selectedProvider).toUpperCase();
 
         startCallBtn.style.display = 'none';
+        if (listeningModeToggle) listeningModeToggle.style.display = 'inline-flex';
         if (commitNowBtn) commitNowBtn.style.display = 'inline-flex';
+        updateListeningModeUI();
+        clearDraftBubble();
         pauseBtn.style.display = 'inline-flex';
         extendBtn.style.display = 'inline-flex';
         visualsToggleBtn.style.display = 'none';
@@ -1746,7 +1817,10 @@ startCallBtn.addEventListener('click', () => {
     startSessionTimer();
 
     startCallBtn.style.display = 'none';
+    if (listeningModeToggle) listeningModeToggle.style.display = 'inline-flex';
     if (commitNowBtn) commitNowBtn.style.display = 'inline-flex';
+    updateListeningModeUI();
+    clearDraftBubble();
     pauseBtn.style.display = 'inline-flex';
     extendBtn.style.display = 'inline-flex';
     endBtn.style.display = 'inline-flex';
@@ -2033,6 +2107,48 @@ extendBtn.addEventListener('click', () => {
     updateTimerDisplay();
 });
 
+function updateListeningModeUI() {
+    const mode = getSettings().listening_mode || 'auto';
+    const isManual = mode === 'manual';
+
+    if (listeningModeToggle) {
+        listeningModeToggle.textContent = isManual ? '✋ Manual' : '🎤 Auto';
+        listeningModeToggle.title = isManual 
+            ? 'Manual Mode: Speak freely, then click "Done Speaking" to send. (Click to switch to Auto)' 
+            : 'Auto Mode: AI responds after a silence pause. (Click to switch to Manual)';
+        if (isManual) {
+            listeningModeToggle.classList.add('manual-active');
+        } else {
+            listeningModeToggle.classList.remove('manual-active');
+        }
+    }
+
+    if (commitNowBtn) {
+        if (isManual) {
+            commitNowBtn.textContent = '✅ Done Speaking';
+            commitNowBtn.classList.add('manual-mode');
+            commitNowBtn.title = 'Send your full accumulated spoken message to the AI';
+        } else {
+            commitNowBtn.textContent = '⚡ Done Speaking';
+            commitNowBtn.classList.remove('manual-mode');
+            commitNowBtn.title = 'Send spoken thought immediately without waiting for silence pause';
+        }
+    }
+
+    if (settingsListeningMode) {
+        settingsListeningMode.value = mode;
+    }
+}
+
+if (listeningModeToggle) {
+    listeningModeToggle.addEventListener('click', () => {
+        const s = getSettings();
+        s.listening_mode = (s.listening_mode === 'manual') ? 'auto' : 'manual';
+        saveSettings(s);
+        updateListeningModeUI();
+    });
+}
+
 if (commitNowBtn) {
     commitNowBtn.addEventListener('click', () => {
         commitUserUtterance();
@@ -2046,6 +2162,8 @@ endBtn.addEventListener('click', () => {
 // --- Handle Call End & Post-Session Summary Generation ---
 async function handleSessionEnd() {
     if (commitNowBtn) commitNowBtn.style.display = 'none';
+    if (listeningModeToggle) listeningModeToggle.style.display = 'none';
+    clearDraftBubble();
     if (timerInterval) clearInterval(timerInterval);
     timerInterval = null;
     sessionStartTime = null;
@@ -2211,5 +2329,6 @@ window.addEventListener('DOMContentLoaded', () => {
         providerSelect.value = settings.llm_preset;
     }
     updateSettingsPillStatus();
+    updateListeningModeUI();
     fetchSessions();
 });

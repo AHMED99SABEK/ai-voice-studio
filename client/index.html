@@ -202,6 +202,7 @@ Begin the encounter as the patient already seated, ready to respond irritably to
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
                             <span>Start Call</span>
                         </button>
+                        <button id="listening-mode-toggle" style="display:none;" title="Toggle between Auto and Manual listening">🎤 Auto</button>
                         <button id="commit-now-btn" class="control-btn" style="display:none;" title="Send spoken thought immediately without waiting for silence pause">⚡ Done Speaking</button>
                         <button id="pause-btn" class="control-btn" style="display:none;">Pause</button>
                         <button id="extend-btn" class="control-btn" style="display:none;">+5 Min</button>
@@ -359,6 +360,14 @@ Begin the encounter as the patient already seated, ready to respond irritably to
                         <option value="2500">Extra Patient (2.5s silence)</option>
                     </select>
                     <span class="field-hint">Controls how long you can pause mid-sentence to think before the AI responds. Default is 1.5 seconds.</span>
+                </div>
+                <div class="form-group" style="margin-top: 1rem;">
+                    <label for="settings-listening-mode">Listening Mode</label>
+                    <select id="settings-listening-mode" class="custom-select">
+                        <option value="auto">Auto — Send after silence pause</option>
+                        <option value="manual">Manual — Speak freely, click Send when ready</option>
+                    </select>
+                    <span class="field-hint">Auto mode sends your speech after a silence pause. Manual mode lets you speak as long as you want and send when you click the button.</span>
                 </div>
             </div>
 
