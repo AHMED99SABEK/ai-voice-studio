@@ -254,7 +254,7 @@ Begin the encounter as the patient already seated, ready to respond irritably to
                 </main>
             </div>
 
-            <!-- End Screen / Summary -->
+            <!-- End Screen / Summary & Transcript -->
             <div id="end-screen" class="screen">
                 <div class="glass-panel end-panel">
                     <div class="end-panel-header">
@@ -262,15 +262,45 @@ Begin the encounter as the patient already seated, ready to respond irritably to
                         <h2 id="end-session-title">Session Complete</h2>
                         <div class="session-meta-tags" id="end-meta-tags"></div>
                     </div>
-                    <div id="summary-content" class="summary-content">
-                        <div class="summary-loading">
-                            <div class="loading-spinner"></div>
-                            <p>DeepSeek is generating your structured summary and review...</p>
+
+                    <!-- End Screen View Tabs -->
+                    <div class="end-tabs">
+                        <button type="button" class="end-tab-btn active" data-end-tab="both">📑 Summary & Transcript</button>
+                        <button type="button" class="end-tab-btn" data-end-tab="summary">📋 Executive Summary</button>
+                        <button type="button" class="end-tab-btn" data-end-tab="transcript">💬 Full Transcript (<span id="end-transcript-count">0</span>)</button>
+                    </div>
+
+                    <!-- Sections Container -->
+                    <div class="end-sections-container">
+                        <!-- Summary Section -->
+                        <div id="end-summary-section" class="end-section">
+                            <div class="end-section-header">
+                                <span class="end-section-icon">📋</span>
+                                <h3>Executive Summary & Analysis</h3>
+                            </div>
+                            <div id="summary-content" class="summary-content">
+                                <div class="summary-loading">
+                                    <div class="loading-spinner"></div>
+                                    <p>Generating detailed conversation summary and analysis...</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Transcript Section -->
+                        <div id="end-transcript-section" class="end-section">
+                            <div class="end-section-header">
+                                <span class="end-section-icon">💬</span>
+                                <h3>Full Conversation Transcript</h3>
+                            </div>
+                            <div id="end-transcript-content" class="end-transcript-messages">
+                                <!-- Populated dynamically -->
+                            </div>
                         </div>
                     </div>
+
                     <div class="actions">
                         <button id="restart-btn" class="primary-btn">Start New Session</button>
-                        <button id="export-btn" class="secondary-btn">Download Visuals</button>
+                        <button id="export-btn" class="secondary-btn">Download Transcript (.md)</button>
                         <button id="delete-session-btn" class="danger-btn">Delete Session</button>
                     </div>
                 </div>

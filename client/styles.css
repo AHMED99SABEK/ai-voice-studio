@@ -1090,12 +1090,12 @@ body::after {
 
 .end-panel {
     width: 100%;
-    max-width: 680px;
+    max-width: 860px;
     border-radius: var(--radius-lg);
-    padding: 40px;
+    padding: 36px;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: 20px;
     animation: fadeIn 0.4s ease-out;
 }
 
@@ -1126,6 +1126,71 @@ body::after {
     font-weight: 700;
 }
 
+/* End Screen Tabs */
+.end-tabs {
+    display: flex;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 4px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+.end-tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    padding: 9px 12px;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.end-tab-btn:hover {
+    color: var(--text-main);
+}
+
+.end-tab-btn.active {
+    background: rgba(139, 92, 246, 0.22);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+}
+
+/* End Sections Container */
+.end-sections-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.end-section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.end-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 2px;
+}
+
+.end-section-icon {
+    font-size: 1rem;
+}
+
+.end-section-header h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #c4b5fd;
+    margin: 0;
+}
+
 .summary-content {
     background: rgba(10, 12, 18, 0.4);
     border: 1px solid var(--border-subtle);
@@ -1133,8 +1198,28 @@ body::after {
     padding: 24px;
     line-height: 1.65;
     font-size: 0.95rem;
-    max-height: 50vh;
+    max-height: 42vh;
     overflow-y: auto;
+}
+
+.end-transcript-messages {
+    background: rgba(10, 12, 18, 0.4);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: 42vh;
+    overflow-y: auto;
+}
+
+.end-transcript-empty {
+    text-align: center;
+    padding: 30px 16px;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-style: italic;
 }
 
 .summary-content h1, .summary-content h2, .summary-content h3 {
@@ -1791,10 +1876,16 @@ body::after {
         font-size: 1.35rem;
     }
 
-    .summary-content {
+    .summary-content,
+    .end-transcript-messages {
         padding: 16px;
         font-size: 0.88rem;
-        max-height: 40vh;
+        max-height: 38vh;
+    }
+
+    .end-tabs {
+        flex-direction: column;
+        gap: 4px;
     }
 
     .actions {

@@ -131,6 +131,10 @@ const closeCanvasBtn = document.getElementById('close-canvas-btn');
 const endSessionTitle = document.getElementById('end-session-title');
 const endMetaTags = document.getElementById('end-meta-tags');
 const summaryContent = document.getElementById('summary-content');
+const endTranscriptContent = document.getElementById('end-transcript-content');
+const endTranscriptCount = document.getElementById('end-transcript-count');
+const endSummarySection = document.getElementById('end-summary-section');
+const endTranscriptSection = document.getElementById('end-transcript-section');
 const restartBtn = document.getElementById('restart-btn');
 const exportBtn = document.getElementById('export-btn');
 const deleteSessionBtn = document.getElementById('delete-session-btn');
@@ -691,6 +695,14 @@ async function loadSessionHistory(id) {
     summaryContent.innerHTML = data.summary ? 
         renderSanitizedMarkdown(data.summary) : 
         '<p>No summary generated for this session yet.</p>';
+
+    let messages = data.transcript;
+    if (typeof messages === 'string') {
+        try { messages = JSON.parse(messages); } catch (e) { messages = []; }
+    }
+    sessionMessages = Array.isArray(messages) ? messages : [];
+    resetEndScreenTabs();
+    renderEndScreenTranscript(sessionMessages);
         
     fetchSessions();
 }
@@ -2185,6 +2197,9 @@ async function handleSessionEnd() {
     endSessionTitle.textContent = currentSessionTitle;
     endMetaTags.innerHTML = `<span class="meta-tag status-live" style="background:rgba(239,68,68,0.15);color:#fca5a5;">Completed</span>`;
 
+    resetEndScreenTabs();
+    renderEndScreenTranscript(sessionMessages);
+
     summaryContent.innerHTML = `
         <div class="summary-loading">
             <div class="loading-spinner"></div>
@@ -2272,6 +2287,57 @@ async function handleSessionEnd() {
 
     fetchSessions();
 }
+
+function renderEndScreenTranscript(messages) {
+    if (!endTranscriptContent) return;
+    endTranscriptContent.innerHTML = '';
+    const count = (messages && Array.isArray(messages)) ? messages.length : 0;
+    if (endTranscriptCount) endTranscriptCount.textContent = count;
+
+    if (!messages || messages.length === 0) {
+        endTranscriptContent.innerHTML = '<div class="end-transcript-empty">No spoken conversation recorded for this session.</div>';
+        return;
+    }
+
+    messages.forEach(m => {
+        const isUser = m.role === 'user';
+        const bubble = document.createElement('div');
+        bubble.className = `transcript-bubble ${isUser ? 'user' : 'assistant'}`;
+        bubble.innerHTML = `
+            <div class="bubble-header">${isUser ? 'You' : 'AI Assistant'}</div>
+            <div class="bubble-content">${isUser ? escapeHtml(m.content) : formatMarkdownText(m.content)}</div>
+        `;
+        endTranscriptContent.appendChild(bubble);
+    });
+
+    renderMermaidDiagramsInElement(endTranscriptContent);
+}
+
+function resetEndScreenTabs() {
+    document.querySelectorAll('.end-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.endTab === 'both');
+    });
+    if (endSummarySection) endSummarySection.style.display = 'flex';
+    if (endTranscriptSection) endTranscriptSection.style.display = 'flex';
+}
+
+document.querySelectorAll('.end-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.end-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = btn.dataset.endTab;
+        if (tab === 'both') {
+            if (endSummarySection) endSummarySection.style.display = 'flex';
+            if (endTranscriptSection) endTranscriptSection.style.display = 'flex';
+        } else if (tab === 'summary') {
+            if (endSummarySection) endSummarySection.style.display = 'flex';
+            if (endTranscriptSection) endTranscriptSection.style.display = 'none';
+        } else if (tab === 'transcript') {
+            if (endSummarySection) endSummarySection.style.display = 'none';
+            if (endTranscriptSection) endTranscriptSection.style.display = 'flex';
+        }
+    });
+});
 
 restartBtn.addEventListener('click', () => {
     endScreen.classList.remove('active');
