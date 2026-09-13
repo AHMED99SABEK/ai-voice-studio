@@ -1107,19 +1107,27 @@ function connectDeepgram(apiKey, retryCount = 0) {
         try {
             const data = JSON.parse(event.data);
 
-            // 1. User began vocalizing (VAD) -> update status dot only; DO NOT interrupt assistant speech!
+            // 1. User began vocalizing (VAD) -> cancel any pending silence commit timer!
             if (data.type === 'SpeechStarted') {
+                if (speechFinalTimeout) {
+                    clearTimeout(speechFinalTimeout);
+                    speechFinalTimeout = null;
+                }
                 if (speechActivityIndicator) {
                     speechActivityIndicator.innerHTML = '<span class="status-dot" style="background:#22c55e;"></span> <span class="indicator-text">Listening...</span>';
                 }
                 return;
             }
 
-            // 2. User stopped speaking (VAD UtteranceEnd) -> in auto mode, commit turn if chunks exist
+            // 2. User stopped speaking (VAD UtteranceEnd) -> schedule pause timer, do NOT commit immediately
             if (data.type === 'UtteranceEnd') {
                 const currentSettings = getSettings();
                 if (currentSettings.listening_mode !== 'manual') {
-                    commitUserUtterance();
+                    if (currentUtteranceChunks.length > 0 && !speechFinalTimeout) {
+                        speechFinalTimeout = setTimeout(() => {
+                            commitUserUtterance();
+                        }, Math.min(800, pauseTolerance));
+                    }
                 }
                 return;
             }
@@ -1132,6 +1140,12 @@ function connectDeepgram(apiKey, retryCount = 0) {
                 const speechFinal = data.speech_final;
 
                 if (transcript && transcript.length > 0) {
+                    // Active vocalization: cancel any pending silence commit timer so speech isn't chopped mid-sentence!
+                    if (speechFinalTimeout) {
+                        clearTimeout(speechFinalTimeout);
+                        speechFinalTimeout = null;
+                    }
+
                     const cleanWords = transcript.replace(/[^a-zA-Z0-9]/g, "").trim();
 
                     // ONLY interrupt assistant if recognizable words (>= 2 chars) are spoken!
@@ -1150,11 +1164,10 @@ function connectDeepgram(apiKey, retryCount = 0) {
                         
                         const currentSettings = getSettings();
                         if (currentSettings.listening_mode !== 'manual') {
-                            // Fallback silence timer after finalized speech chunk in Auto mode
-                            if (speechFinalTimeout) clearTimeout(speechFinalTimeout);
+                            // Reset silence timer after finalized speech chunk
                             speechFinalTimeout = setTimeout(() => {
                                 commitUserUtterance();
-                            }, fallbackTimeoutMs);
+                            }, pauseTolerance);
                         }
                     } else {
                         // Interim hypothesis -> display preview live in the chat draft bubble!
@@ -1162,11 +1175,16 @@ function connectDeepgram(apiKey, retryCount = 0) {
                     }
                 }
 
-                // If Deepgram endpointing detected end of speech, commit in Auto mode
+                // If Deepgram endpointing detected end of sentence, give a grace pause instead of cutting off mid-thought
                 if (speechFinal) {
                     const currentSettings = getSettings();
                     if (currentSettings.listening_mode !== 'manual') {
-                        commitUserUtterance();
+                        if (currentUtteranceChunks.length > 0) {
+                            if (speechFinalTimeout) clearTimeout(speechFinalTimeout);
+                            speechFinalTimeout = setTimeout(() => {
+                                commitUserUtterance();
+                            }, Math.max(600, Math.min(1200, pauseTolerance)));
+                        }
                     }
                 }
             }
@@ -1404,9 +1422,13 @@ async function triggerAssistantTurn(userText) {
         speechActivityIndicator.innerHTML = '<span class="status-dot" style="background:#a78bfa;"></span> <span class="indicator-text" style="color:#c4b5fd;">AI Thinking...</span>';
     }
 
-    // Add to session message history
+    // Add to session message history (merge if previous message was also user)
     if (userText) {
-        sessionMessages.push({ role: 'user', content: userText });
+        if (sessionMessages.length > 0 && sessionMessages[sessionMessages.length - 1].role === 'user') {
+            sessionMessages[sessionMessages.length - 1].content += ' ' + userText;
+        } else {
+            sessionMessages.push({ role: 'user', content: userText });
+        }
     }
 
     // Synchronize timer to the exact current millisecond
@@ -1522,6 +1544,7 @@ async function triggerAssistantTurn(userText) {
                             const json = JSON.parse(trimmed.substring(6));
                             const delta = json.choices?.[0]?.delta?.content || '';
                             if (delta) {
+                                lastUserBubble = null;
                                 assistantFullText += delta;
 
                                 // Pass raw delta through the TTS filter
@@ -1773,6 +1796,8 @@ joinBtn.addEventListener('click', async () => {
         sessionMessages = [];
         currentVisuals = [];
         currentUtteranceChunks = [];
+        lastUserBubble = null;
+        lastAssistantBubble = null;
         
         setupScreen.classList.remove('active');
         sessionScreen.classList.add('active');
@@ -1833,6 +1858,8 @@ startCallBtn.addEventListener('click', () => {
     if (commitNowBtn) commitNowBtn.style.display = 'inline-flex';
     updateListeningModeUI();
     clearDraftBubble();
+    lastUserBubble = null;
+    lastAssistantBubble = null;
     pauseBtn.style.display = 'inline-flex';
     extendBtn.style.display = 'inline-flex';
     endBtn.style.display = 'inline-flex';
@@ -1848,6 +1875,7 @@ startCallBtn.addEventListener('click', () => {
 });
 
 // --- Live Transcript Rendering & Smooth Scrolling ---
+let lastUserBubble = null;
 let lastAssistantBubble = null;
 
 function renderTranscript(role, text) {
@@ -1858,15 +1886,28 @@ function renderTranscript(role, text) {
 
     if (role === 'user') {
         lastAssistantBubble = null;
-        const bubble = document.createElement('div');
-        bubble.className = 'transcript-bubble user';
-        bubble.innerHTML = `
-            <div class="bubble-header">You</div>
-            <div class="bubble-content">${escapeHtml(text)}</div>
-        `;
-        transcriptMessages.appendChild(bubble);
+        if (lastUserBubble && lastUserBubble.parentNode) {
+            // Append to existing user bubble if AI hasn't answered yet!
+            const prev = lastUserBubble.dataset.fullText || '';
+            const merged = prev ? `${prev} ${text}` : text;
+            lastUserBubble.dataset.fullText = merged;
+            const contentDiv = lastUserBubble.querySelector('.bubble-content');
+            if (contentDiv) {
+                contentDiv.textContent = merged;
+            }
+        } else {
+            const bubble = document.createElement('div');
+            bubble.className = 'transcript-bubble user';
+            bubble.dataset.fullText = text;
+            bubble.innerHTML = `
+                <div class="bubble-header">You</div>
+                <div class="bubble-content">${escapeHtml(text)}</div>
+            `;
+            transcriptMessages.appendChild(bubble);
+            lastUserBubble = bubble;
+        }
         if (speechActivityIndicator) {
-            speechActivityIndicator.innerHTML = '<span class="status-dot"></span> <span class="indicator-text">Transcribed</span>';
+            speechActivityIndicator.innerHTML = '<span class="status-dot"></span> <span class="indicator-text">Listening...</span>';
         }
     } else {
         if (lastAssistantBubble) {
