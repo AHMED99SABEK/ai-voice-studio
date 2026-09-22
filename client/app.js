@@ -64,6 +64,7 @@ let micStream = null;
 let scriptProcessor = null;
 let isStreamingAudio = false;
 let deepgramWs = null;
+let deepgramKeepAliveInterval = null;
 let cartesiaWs = null;
 let activeAudioSources = [];
 let nextAudioPlayTime = 0;
@@ -1101,6 +1102,18 @@ function connectDeepgram(apiKey, retryCount = 0) {
         if (speechActivityIndicator) {
             speechActivityIndicator.innerHTML = '<span class="status-dot"></span> <span class="indicator-text">Listening...</span>';
         }
+
+        // Send periodic KeepAlive (every 5s) to prevent Deepgram 10s idle disconnection
+        if (deepgramKeepAliveInterval) clearInterval(deepgramKeepAliveInterval);
+        deepgramKeepAliveInterval = setInterval(() => {
+            if (deepgramWs && deepgramWs.readyState === WebSocket.OPEN) {
+                try {
+                    deepgramWs.send(JSON.stringify({ type: 'KeepAlive' }));
+                } catch (err) {
+                    console.warn('Deepgram KeepAlive error:', err);
+                }
+            }
+        }, 5000);
     };
 
     deepgramWs.onmessage = (event) => {
@@ -1197,6 +1210,10 @@ function connectDeepgram(apiKey, retryCount = 0) {
         console.error('Deepgram WebSocket error:', err);
     };
     deepgramWs.onclose = (e) => {
+        if (deepgramKeepAliveInterval) {
+            clearInterval(deepgramKeepAliveInterval);
+            deepgramKeepAliveInterval = null;
+        }
         console.log('Deepgram WebSocket closed:', e.code, e.reason);
         if (isCallActive && e.code !== 1000 && e.code !== 1005 && retryCount < 3) {
             console.log(`Deepgram disconnected, reconnecting in 1s (attempt ${retryCount + 1})...`);
@@ -2223,6 +2240,10 @@ async function handleSessionEnd() {
     stopAudio();
     isCallActive = false;
 
+    if (deepgramKeepAliveInterval) {
+        clearInterval(deepgramKeepAliveInterval);
+        deepgramKeepAliveInterval = null;
+    }
     if (deepgramWs) {
         deepgramWs.close();
         deepgramWs = null;
