@@ -1509,6 +1509,14 @@ body::after {
     max-width: 82%;
 }
 
+.draft-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    gap: 12px;
+}
+
 .draft-label {
     display: inline-flex;
     align-items: center;
@@ -1518,7 +1526,6 @@ body::after {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     color: #a78bfa;
-    margin-bottom: 2px;
 }
 
 .draft-label .draft-dot {
@@ -1527,6 +1534,27 @@ body::after {
     border-radius: 50%;
     background: #a78bfa;
     animation: pulse 1.5s infinite;
+}
+
+.draft-clear-btn {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #fca5a5;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.draft-clear-btn:hover {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.6);
+    color: #fecaca;
 }
 
 .draft-content {
@@ -1539,6 +1567,18 @@ body::after {
 .draft-content .interim {
     color: rgba(167, 139, 250, 0.6);
     font-style: italic;
+}
+
+#clear-speech-btn {
+    background: rgba(239, 68, 68, 0.12);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+#clear-speech-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #fecaca;
 }
 
 /* --- Listening Mode Toggle in Controls --- */

@@ -116,6 +116,7 @@ const sessionProgress = document.getElementById('session-progress');
 // Active Session Controls
 const startCallBtn = document.getElementById('start-call-btn');
 const commitNowBtn = document.getElementById('commit-now-btn');
+const clearSpeechBtn = document.getElementById('clear-speech-btn');
 const pauseBtn = document.getElementById('pause-btn');
 const extendBtn = document.getElementById('extend-btn');
 const visualsToggleBtn = document.getElementById('visuals-toggle-btn');
@@ -1040,7 +1041,10 @@ function updateDraftBubble(chunks, interimText = '') {
         : '';
 
     draftUserBubble.innerHTML = `
-        <div class="draft-label"><span class="draft-dot"></span> Composing (You)</div>
+        <div class="draft-header-row">
+            <div class="draft-label"><span class="draft-dot"></span> Composing (You)</div>
+            <button type="button" class="draft-clear-btn" title="Cancel this preview and start over">✕ Cancel</button>
+        </div>
         <div class="draft-content">${escapeHtml(fullFinal)}${interimHtml}</div>
     `;
 
@@ -1058,6 +1062,19 @@ function clearDraftBubble() {
         draftUserBubble.remove();
         draftUserBubble = null;
     }
+}
+
+function discardCurrentSpeech() {
+    if (speechFinalTimeout) {
+        clearTimeout(speechFinalTimeout);
+        speechFinalTimeout = null;
+    }
+    currentUtteranceChunks = [];
+    clearDraftBubble();
+    if (speechActivityIndicator) {
+        speechActivityIndicator.innerHTML = '<span class="status-dot"></span> <span class="indicator-text">Listening...</span>';
+    }
+    console.log('Spoken draft cancelled and discarded.');
 }
 
 function commitUserUtterance() {
@@ -1825,6 +1842,7 @@ joinBtn.addEventListener('click', async () => {
         startCallBtn.style.display = 'none';
         if (listeningModeToggle) listeningModeToggle.style.display = 'inline-flex';
         if (commitNowBtn) commitNowBtn.style.display = 'inline-flex';
+        if (clearSpeechBtn) clearSpeechBtn.style.display = 'inline-flex';
         updateListeningModeUI();
         clearDraftBubble();
         pauseBtn.style.display = 'inline-flex';
@@ -1873,6 +1891,7 @@ startCallBtn.addEventListener('click', () => {
     startCallBtn.style.display = 'none';
     if (listeningModeToggle) listeningModeToggle.style.display = 'inline-flex';
     if (commitNowBtn) commitNowBtn.style.display = 'inline-flex';
+    if (clearSpeechBtn) clearSpeechBtn.style.display = 'inline-flex';
     updateListeningModeUI();
     clearDraftBubble();
     lastUserBubble = null;
@@ -2225,6 +2244,20 @@ if (commitNowBtn) {
     });
 }
 
+if (clearSpeechBtn) {
+    clearSpeechBtn.addEventListener('click', () => {
+        discardCurrentSpeech();
+    });
+}
+
+if (transcriptMessages) {
+    transcriptMessages.addEventListener('click', (e) => {
+        if (e.target && e.target.closest('.draft-clear-btn')) {
+            discardCurrentSpeech();
+        }
+    });
+}
+
 endBtn.addEventListener('click', () => {
     handleSessionEnd();
 });
@@ -2232,6 +2265,7 @@ endBtn.addEventListener('click', () => {
 // --- Handle Call End & Post-Session Summary Generation ---
 async function handleSessionEnd() {
     if (commitNowBtn) commitNowBtn.style.display = 'none';
+    if (clearSpeechBtn) clearSpeechBtn.style.display = 'none';
     if (listeningModeToggle) listeningModeToggle.style.display = 'none';
     clearDraftBubble();
     if (timerInterval) clearInterval(timerInterval);
